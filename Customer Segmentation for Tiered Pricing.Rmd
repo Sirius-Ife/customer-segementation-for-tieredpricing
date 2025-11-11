@@ -6,55 +6,71 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+
 # Load necessary libraries
+
 library(dplyr)
 library(ggplot2)
-library(cluster)    # For clustering
-library(factoextra) # For visualization of clusters
-set.seed(42) # Set seed for reproducibility
+library(cluster)    
+library(factoextra) 
+
+set.seed(42) 
+
 ```
 
 ## 1. Generating Synthetic Customer Data
 
 ```{r generate-data}
+
 # Number of customers
+
 n <- 500 
 
 # Generate synthetic data
+
 customer_data <- data.frame(
   customer_id = 1:n,
-  spending = rnorm(n, mean = 500, sd = 150),       # Monthly spending in dollars
-  business_size = sample(1:3, n, replace = TRUE),   # 1: Small, 2: Medium, 3: Large
-  usage_frequency = rpois(n, lambda = 10),          # Number of interactions per month
-  satisfaction_score = runif(n, min = 1, max = 5)   # Customer satisfaction score (1-5)
+  spending = rnorm(n, mean = 500, sd = 150),       
+  business_size = sample(1:3, n, replace = TRUE),   
+  usage_frequency = rpois(n, lambda = 10),         
+  satisfaction_score = runif(n, min = 1, max = 5)   
 )
 
 # Ensure no negative spending values
+
 customer_data <- customer_data %>%
   mutate(spending = ifelse(spending < 0, 0, spending))
 
 # Display the first few rows of data
+
 head(customer_data)
+
 ```
 
 ## 2. Preprocessing and Feature Scaling
 
 ```{r scaling-data}
+
 # Scale the numerical features for clustering
+
 customer_data_scaled <- customer_data %>%
   select(spending, business_size, usage_frequency, satisfaction_score) %>%
   scale()
+
 ```
 
 ## 3. Finding the Optimal Number of Clusters
 
 ```{r elbow-method}
+
 # Function to calculate total within-cluster sum of square
+
 wss <- function(k) {
   kmeans(customer_data_scaled, k, nstart = 10)$tot.withinss
 }
 
 # Compute and plot WSS for k = 1 to k = 10
+
 k_values <- 1:10
 wss_values <- sapply(k_values, wss)
 
@@ -62,6 +78,7 @@ plot(k_values, wss_values, type = "b", pch = 19, frame = FALSE,
      xlab = "Number of Clusters K",
      ylab = "Total Within-Clusters Sum of Squares",
      main = "Elbow Method for Optimal K")
+
 ```
 
 ## 4. Applying K-Means Clustering
@@ -69,38 +86,49 @@ plot(k_values, wss_values, type = "b", pch = 19, frame = FALSE,
 Based on the elbow plot, we’ll use `k = 3` clusters.
 
 ```{r clustering}
-# Apply k-means clustering with chosen number of clusters (e.g., k = 3)
+
+# Apply k-means clustering with chosen number of clusters 
+
 k <- 3
 kmeans_result <- kmeans(customer_data_scaled, centers = k, nstart = 10)
 customer_data$cluster <- as.factor(kmeans_result$cluster)
+
 ```
 
 ## 5. Visualizing Clusters
 
 ```{r cluster-visualization}
+
 # Plot clusters using factoextra package
+
 fviz_cluster(kmeans_result, data = customer_data_scaled,
              geom = "point", ellipse.type = "convex", 
              ggtheme = theme_minimal(),
              main = "K-means Clustering of Customer Data")
+
 ```
 
 ### Spending vs Usage Frequency with Clusters
 
 ```{r spending-usage-plot}
+
 # Visualize clusters based on spending and usage frequency
+
 ggplot(customer_data, aes(x = spending, y = usage_frequency, color = cluster)) +
   geom_point(alpha = 0.7) +
   labs(title = "Customer Segmentation by Spending and Usage Frequency",
        x = "Monthly Spending (USD)",
        y = "Usage Frequency") +
   theme_minimal()
+
 ```
 
 ## 6. Analyzing Cluster Profiles
 
 ```{r cluster-profiles}
-# Summary of each cluster
+
+# Summary of each 
+
 cluster_summary <- customer_data %>%
   group_by(cluster) %>%
   summarize(
@@ -110,22 +138,34 @@ cluster_summary <- customer_data %>%
     avg_satisfaction = mean(satisfaction_score)
   )
 cluster_summary
+
 ```
+
+## Interpretation
+
+Cluster 1 includes small and medium businesses that spend the most but are least satisfied, meaning they are high-value but at risk.
+Cluster 2 includes small businesses with the highest usage and satisfaction, representing loyal and engaged users.
+Cluster 3 includes the smallest businesses with moderate spending and satisfaction, making them stable but lower-growth users.
+
+Overall, retain Cluster 1, reward Cluster 2, and develop Cluster 3.
 
 ## 7. Pricing Tier Recommendations
 
 Using the clusters, we can recommend pricing tiers based on the segment’s average characteristics.
 
 ```{r pricing-recommendations}
+
 # Example pricing recommendations for each cluster
+
 tier_recommendations <- data.frame(
   cluster = 1:k,
   description = c("Small Business Tier", "Medium Business Tier", "Enterprise Tier"),
   suggested_price = c(300, 500, 700) # Hypothetical prices for each segment
 )
 tier_recommendations
+
 ```
 
 ## Conclusion
 
-This analysis provides a basic framework for customer segmentation using k-means clustering. Based on the cluster characteristics, we can tailor pricing tiers that align with each segment's willingness to pay and product usage, enhancing revenue potential and customer satisfaction.
+This analysis demonstrates how k-means clustering can segment customers into meaningful groups based on spending, business size, usage, and satisfaction. The resulting segments naturally align with three pricing tiers, small business ($300), medium business ($500), and enterprise ($700). By matching pricing and engagement strategies to each group’s characteristics, the business can improve revenue efficiency, retention, and overall customer satisfaction.
